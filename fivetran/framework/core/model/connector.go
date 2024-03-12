@@ -181,14 +181,13 @@ func (d *ConnectorResourceModel) ReadFromContainer(c ConnectorModelContainer) {
 
 	d.DestinationSchema = getDestinationSchemaValue(c.Service, c.Schema)
 
-	// if no config specified - we do not read it to state
-	if !d.Config.IsNull() {
-		d.Config = getValue(
-			types.ObjectType{AttrTypes: getAttrTypes(common.GetConfigFieldsMap())},
-			c.Config,
-			getValueFromAttrValue(d.Config, common.GetConfigFieldsMap(), nil, c.Service).(map[string]interface{}),
-			common.GetConfigFieldsMap(), nil, c.Service).(basetypes.ObjectValue)
-	}
+	// Always read config; if we imported with an earlier version of this code,
+	// the config might be null in Terraform but obviously exists in Fivetran.
+	d.Config = getValue(
+		types.ObjectType{AttrTypes: getAttrTypes(common.GetConfigFieldsMap())},
+		c.Config,
+		getValueFromAttrValue(d.Config, common.GetConfigFieldsMap(), nil, c.Service).(map[string]interface{}),
+		common.GetConfigFieldsMap(), nil, c.Service).(basetypes.ObjectValue)
 }
 
 func (d *ConnectorDatasourceModel) ReadFromContainer(c ConnectorModelContainer) {
