@@ -5,13 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.12...HEAD)
+## [Unreleased](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.14...HEAD)
 
-## [1.1.12](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.10...v1.1.11)
+## [1.1.14](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.13...v1.1.14)
+
+## Fixed
+- Issue with `run_setup_tests`, `trust_certificates` and `trust_fingerprints` fields
+- Issue with `405` errors on resource update
+
+## New supported connector service types
+- Supported service: `adobe_workfront`
+- Supported service: `azure_cosmos_for_mongo`
+- Supported service: `callrail`
+- Supported service: `clubspeed`
+- Supported service: `datadog`
+- Supported service: `electronic_tenant_solutions`
+- Supported service: `firehydrant`
+- Supported service: `fourkites`
+- Supported service: `genesys`
+- Supported service: `gmail`
+- Supported service: `livechat_partner`
+- Supported service: `mambu`
+- Supported service: `revenuecat`
+- Supported service: `ricochet360`
+- Supported service: `rithum`
+- Supported service: `sharetribe`
+- Supported service: `sparkpost`
+- Supported service: `starrez`
+- Supported service: `teads`
+- Supported service: `visit_by_ges`
+- Supported service: `walmart_marketplace`
+
+## Updated `config` schema for connector resource
+- Added field `fivetran_connector.config.account_region` for services: `iterable`.
+- Added field `fivetran_connector.config.tenant_name` for services: `mambu`.
+- Added field `fivetran_connector.config.direct_capture_method` for services: `oracle_hva`, `oracle_sap_hva`.
+- Added field `fivetran_connector.config.is_sftp_creds_available` for services: `salesforce_marketing_cloud`.
+- Added field `fivetran_connector.config.legal_entity_id` for services: `younium`.
+- Added field `fivetran_connector.config.organization_domain` for services: `adobe_workfront`.
+- Added field `fivetran_connector.config.custom_url` for services: `dbt_cloud`.
+- Added field `fivetran_connector.config.pats` for services: `github`.
+
+## [1.1.13](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.12...v1.1.13)
+
+## Updated `config` schema for connector resource
+- Added field `fivetran_connector.config.company_ids` for services: `cj_commission_detail`.
+- Added field `fivetran_connector.config.target_entity_id` for services: `culture_amp`.
+- Added field `fivetran_connector.config.url_format` for services: `fountain`.
+- Added field `fivetran_connector.config.should_sync_events_with_deleted_profiles` for services: `klaviyo`.
+- Added field `fivetran_connector.config.pull_archived_campaigns` for services: `outbrain`.
+- Added field `fivetran_connector.config.store_id` for services: `reviewsio`.
+- Added field `fivetran_connector.config.non_standard_escape_char` for services: `s3`.
+- Added field `fivetran_connector.config.product` for services: `webconnex`.
+- Added field `fivetran_connector.config.auth_environment` for services: `younium`.
+- Added field `fivetran_connector.config.service_authentication` for services: `dsv`.
+- Added field `fivetran_connector.config.subscription_key` for services: `dsv`.
+- Added field `fivetran_connector.config.escape_char_options` for services: `s3`.
+
+## [1.1.12](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.11...v1.1.12)
 
 ## Updated
 - Destination Resource migrated on `terraform-plugin-framework`
 - Destination Datasource migrated on `terraform-plugin-framework`
+
+## Fixed
+- Issue with `daily_sync_time` in `connector_schedule` resource
+- Issue with fields in connector config that are not managed by configuration, but returned from upstream (non-nullable)
+- Issue with object collection fields with sensitive sub-fields
 
 ## [1.1.11](https://github.com/fivetran/terraform-provider-fivetran/compare/v1.1.10...v1.1.11)
 

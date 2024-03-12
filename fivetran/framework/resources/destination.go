@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/fivetran/terraform-provider-fivetran/fivetran/common"
 	"github.com/fivetran/terraform-provider-fivetran/fivetran/framework/core"
@@ -108,7 +109,53 @@ func (r *destination) Create(ctx context.Context, req resource.CreateRequest, re
 
 		return
 	}
-	data.ReadFromResponseWithTests(response)
+
+	// For some reason tests may fail on first run, but succeed on second
+	if runSetupTestsPlan && strings.ToLower(response.Data.SetupStatus) != "connected" {
+		resp.Diagnostics.AddWarning(
+			"Setup Tests for destination failed on creation. Running post-creation attempt.",
+			fmt.Sprintf("%v", response.Data.SetupTests),
+		)
+
+		rsts := r.GetClient().NewDestinationSetupTests().
+			DestinationID(response.Data.ID).
+			TrustCertificates(trustCertificatesPlan).
+			TrustFingerprints(trustFingerprintsPlan)
+
+		stResponse, err := rsts.Do(ctx)
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Create Destination Resource.",
+				fmt.Sprintf("%v; code: %v; message: %v", err, stResponse.Code, stResponse.Message),
+			)
+
+			return
+		}
+
+		if strings.ToLower(stResponse.Data.SetupStatus) != "connected" {
+			resp.Diagnostics.AddWarning(
+				"Setup Tests for destination failed.",
+				fmt.Sprintf("%v", stResponse.Data.SetupTests),
+			)
+		}
+
+		detailsResponse, err := r.GetClient().NewDestinationDetails().DestinationID(response.Data.ID).DoCustom(ctx)
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Create Destination Resource.",
+				fmt.Sprintf("%v; code: %v; message: %v", err, detailsResponse.Code, detailsResponse.Message),
+			)
+
+			return
+		}
+
+		// re-read destination details after setup-tests finished
+		data.ReadFromResponse(detailsResponse)
+	} else {
+		data.ReadFromResponseWithTests(response)
+	}
 	data.RunSetupTests = types.BoolValue(runSetupTestsPlan)
 	data.TrustCertificates = types.BoolValue(trustCertificatesPlan)
 	data.TrustFingerprints = types.BoolValue(trustFingerprintsPlan)
@@ -131,9 +178,17 @@ func (r *destination) Read(ctx context.Context, req resource.ReadRequest, resp *
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
+	id := data.Id.ValueString()
+
+	// Recovery from 1.1.13 bug
+	if data.Id.IsUnknown() || data.Id.IsNull() {
+		// Currently group_id -> 1:1 <- destination_id
+		id = data.GroupId.ValueString()
+	}
+
 	response, err := r.GetClient().
 		NewDestinationDetails().
-		DestinationID(data.Id.ValueString()).
+		DestinationID(id).
 		DoCustom(ctx)
 
 	if err != nil {
@@ -198,6 +253,7 @@ func (r *destination) Update(ctx context.Context, req resource.UpdateRequest, re
 
 	patch := model.PrepareConfigAuthPatch(stateConfigMap, planConfigMap, plan.Service.ValueString(), common.GetDestinationFieldsMap())
 
+	updatePerformed := false
 	if len(patch) > 0 || timeZoneHasChange || regionHasChange {
 		svc := r.GetClient().NewDestinationModify().
 			RunSetupTests(runSetupTestsPlan).
@@ -220,6 +276,7 @@ func (r *destination) Update(ctx context.Context, req resource.UpdateRequest, re
 			)
 			return
 		}
+		updatePerformed = true
 		plan.ReadFromResponseWithTests(response)
 	} else {
 		// If values of testing fields changed we should run tests
@@ -239,7 +296,32 @@ func (r *destination) Update(ctx context.Context, req resource.UpdateRequest, re
 			plan.ReadFromLegacyResponse(response)
 			// there were no changes in config so we can just copy it from state
 			plan.Config = state.Config
+			updatePerformed = true
 		}
+	}
+
+	if !updatePerformed {
+		// re-read connector upstream with an additional request after update
+		response, err := r.GetClient().NewDestinationDetails().DestinationID(state.Id.ValueString()).DoCustom(ctx)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to Read after Update Destination Resource.",
+				fmt.Sprintf("%v; code: %v; message: %v", err, response.Code, response.Message),
+			)
+			return
+		}
+		plan.ReadFromResponse(response)
+	}
+
+	// Set up synthetic values
+	if plan.RunSetupTests.IsUnknown() {
+		plan.RunSetupTests = state.RunSetupTests
+	}
+	if plan.TrustCertificates.IsUnknown() {
+		plan.TrustCertificates = state.TrustCertificates
+	}
+	if plan.TrustFingerprints.IsUnknown() {
+		plan.TrustFingerprints = state.TrustFingerprints
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
